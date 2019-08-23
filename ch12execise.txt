@@ -1,0 +1,78 @@
+## Execises
+
+#### 1. Try to find out which range on Chr12 has bind maximum number of LncRNA/TF?
+```
+CALL algo.degree.stream("MATCH(n)-[]->(m:chr12) with{ m,n} as nChr12", "Bind", {direction: "incoming"})
+YIELD nodeId, score
+RETURN algo.asNode(nodeId) AS chr12, score ORDER BY score DESC limit 10
+```
+
+#### 2. Try to find out which LncRNA can bind biggest range on Chr12?
+```
+MATCH (LncRNA:LncRNA) with LncRNA AS LncRNA
+CALL algo.degree.stream("MATCH(n:LncRNA)-[]->(m:chr12) with{ m,n} as LncRNAChr12", "Bind", {direction: "incoming"})
+YIELD nodeId, score
+WHERE algo.asNode(nodeId).Name = LncRNA.Name
+RETURN algo.asNode(nodeId).Name AS Name, score 
+ORDER BY score DESC
+```
+
+#### 3. Calculates which TF have maximum number of relationships bind to chr12_Range.
+```
+MATCH (TF:TF) with TF AS TF
+CALL algo.closeness.stream("MATCH(TF:TF)-[:bind]-(chr12:chr12) with{TF, chr12} AS TF_Chr12", "Bind")
+YIELD nodeId, centrality
+where algo.getNodeById(nodeId).Name = TF.Name
+RETURN algo.getNodeById(nodeId).Name AS TF, centrality
+ORDER BY centrality DESC LIMIT 10
+```
+
+#### 4. To campare what is difference in Closeness Centrality and two variation(Wasserman and Faust, Harmonic Centrality).
+
+#### 5. To find out a LncRNA that thoughs the maximum number of shortest paths,please use  Closeness Centrality, Wasserman and Faust and Harmonic Centrality.
+```
+// get all LncRNA 
+MATCH (m:LncRNA) with m as m
+
+// To run algo.closeness.harmonic.stream
+CALL algo.closeness.harmonic.stream("MATCH (n) return n as allnode", "Bind")
+YIELD nodeId, centrality
+
+//filter LncRNA nodes and return the result
+Where algo.getNodeById(nodeId).Name = m.Name 
+RETURN algo.getNodeById(nodeId).Name, centrality
+ORDER BY centrality DESC limit 10
+```
+这里需要修改修改修改
+
+#### 6. Calculates which TF have maximum number of `shortest paths` bind to chr12.
+Betweenness Centrality
+```
+CALL algo.betweenness.stream("MATCH(TF:TF)-[:bind]-(chr12:chr12) with{TF, chr12} AS TF_Chr12", "Bind")
+YIELD nodeId, centrality
+RETURN algo.getNodeById(nodeId).Name, centrality
+ORDER BY centrality DESC
+```
+Randomized-Approximate Brandes
+```
+CALL algo.betweenness.sampled.stream("MATCH(TF:TF)-[:bind]-(chr12:chr12) with{TF, chr12} AS TF_Chr12", "Bind", {strategy:"degree"})
+YIELD nodeId, centrality
+RETURN algo.getNodeById(nodeId).Name AS user, centrality
+ORDER BY centrality DESC
+```
+#### 7. Use PageRank to estimates which TF is most important in the subgraph that TFs bind on chr12. 
+```
+MATCH (TF:TF) with TF AS TF
+CALL algo.pageRank.stream("MATCH(TF:TF)-[:bind]-(chr12:chr12) with{TF, chr12} AS TF_Chr12", "Bind", {iterations:20,dampingFactor:0.85})
+YIELD nodeId, score
+where algo.getNodeById(nodeId).Name = TF.Name
+RETURN algo.getNodeById(nodeId).Name, score
+ORDER BY score DESC
+```
+#### 8. The default label and relationship-type projection has a limitation of 2 billion nodes and 2 billion relationships. Therefore, if our projected graph contains more than 2 billion nodes or relationships, we will need to use huge graph projection.Set `graph:'huge'` on your cypher commands to test whether your results are the same.
+```
+CALL algo.pageRank.stream("MATCH(TF:TF)-[:bind]-(chr1:chr12) with{TF, chr12} AS TF_Chr12", "Bind", {iterations:20,dampingFactor:0.85,graph:'huge'})
+YIELD nodeId, score
+RETURN algo.getNodeById(nodeId).Name, score
+ORDER BY score DESC
+```
